@@ -1,0 +1,28 @@
+with cust_profiles as (
+SELECT
+  a.*,
+  FARM_FINGERPRINT(LOWER(a.customerId)) as customerId_hashed,
+  b.customerAccountState,
+  b.customerCategory
+FROM
+  ingka-ce-customer360-prod.progressive_profiling.progressive_profiling_signup_test_JP  a
+join
+  `ingka-ce-customer360-prod.cm__data_quality_history_prod.cph_customers` b
+  on a.customerId=b.customerId
+)
+
+select
+market,
+variation,
+count(distinct case when session_info.upper_funnel.add_to_cart=True then session_info.party_uid end) as customers_add_to_cart,
+count(distinct case when session_info.upper_funnel.cart_viewed=True then session_info.party_uid end) as customers_cart_viewed,
+count(distinct case when session_info.lower_funnel.checkout_started=True then session_info.party_uid end) as customers_checkout_started,
+count(distinct case when session_info.lower_funnel.delivery_step_viewed=True then session_info.party_uid end) as customers_delivery_step_viewed,
+count(distinct case when session_info.lower_funnel.address_step_viewed=True then session_info.party_uid end) as customers_address_step_viewed,
+count(distinct case when session_info.lower_funnel.payment_step_viewed=True then session_info.party_uid end) as customers_payment_step_viewed,
+count(distinct case when session_info.lower_funnel.order_confirmation_viewed=True then session_info.party_uid end) as customers_order_confirmation_viewed,
+from `ingka-online-analytics-prod.episod_web.sessions` a
+join cust_profiles b on a.session_info.party_uid=b.customerId_hashed
+where session_startdate>='2023-12-06' and session_startdate<='2024-01-02'
+and session_info.logged_in=True
+group by 1,2
